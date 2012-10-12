@@ -72,6 +72,9 @@ stats = {
       :row_keys => [],  # values for variable metric
       :col_keys => [:path_len_histogram, :diameter_by_owner, :diameter_by_interest],
       :data => Hash.new {|h,k| h[k] = {}},
+      # NB: Don't currently display path matrix info, but maybe useful in
+      # future? For now, key: row_keys, val: path matrix associated w/ the row_key
+      :path_matrices => {}
     }
   end,
   # standalone_graphs: just a normal scatter plot for some property
@@ -101,6 +104,7 @@ puts "Loaded path_matrix from #{args[:in]}: #{upm.inspect}"
     end
   end
 
+  stats[:matrix_graphs][:link_failure][:path_matrices][link_fail_pct] = upm.h
   stats[:matrix_graphs][:link_failure][:row_keys] <<  link_fail_pct.to_s
   mgraphs = stats[:matrix_graphs][:link_failure][:data]
   sgraphs = stats[:standalone_graphs]
