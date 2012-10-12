@@ -1,0 +1,20 @@
+TODO?
+-----
+- edge budget:owner ratio
+  - assume all nodes have the same interests
+- power law distribution for nodes per owner w/ mode=2?
+  => can vaguely approximate with uniform distribution and O comparagble to V
+- message delivery (suspect knn greediness will make more sense here)
+- test cases for known/standard graph forms
+
+BUGS (Please ping me if you encounter others!)
+----
+plot: (aka: Axes of Evil)
+- 3rd column y-axis seems to be occluded for some reason
+- normalize matrix axes
+
+util.rb:
+- binomial distribution centering doesn't really generate a helpful spread of properties.
+
+graph.rb:
+- unpopular nodes reach their proactive peer budget but may not reach their total peer budget when no one else chooses them.  This is a bit wasteful.
