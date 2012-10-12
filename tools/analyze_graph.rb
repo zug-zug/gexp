@@ -1,21 +1,8 @@
+require 'optparse'
 require 'pathname'
 require File.dirname(__FILE__) + "/graph"
-require File.dirname(__FILE__) + "/util"
 
 STDOUT.sync = true
-
-def usage
-  abort(<<EOF)
-usage: ruby analyze_graph.rb N <# samples> linkfail_inc <% incremental failure> in <input graph> out <output file>
-
-in            : input graph (required)
-out           : output stats (required; must differ from 'in')
-N             : number of node pairs to sample (max: (|V| choose 2))
-linkfail_inc  : incremental % of random link failure (range: (0.0, 0.5) default: 10%)
-EOF
-end
-
-usage if ARGV.empty? || ARGV.include?('--help') || ARGV.include?('-?')
 
 args = {
   :in => nil,
@@ -24,33 +11,29 @@ args = {
   :linkfail_inc => 0.05,
 }
 
-i = 0
-while i < ARGV.size
-  arg = ARGV[i]
-  case arg
-  when 'in'
-    i += 1
-    args[:in] = ARGV[i].to_s.strip
-  when 'out'
-    i += 1
-    args[:out] = ARGV[i].to_s.strip
-  when 'N'
-    i += 1
-    args[:samples] = ARGV[i].to_i
-  when 'linkfail_inc'
-    i += 1
-    args[:linkfail_inc] = ARGV[i].to_f
-  else
-    abort "Invalid arg: #{arg.inspect}" 
-  end
-  i += 1
-end
+op = OptionParser.new do |opts|
+  opts.banner =<<EOF
+usage: ruby analyze_graph.rb -n <# samples> -f <% incremental failure> --in <input graph> --out <output file>
 
-usage if args[:out].to_s.empty?
-usage if args[:out] == args[:in]
+EOF
+  opts.on('-n', '--samples N', 'number of node pairs to sample (max: (|V| choose 2))') do |a|
+    args[:samples] = a.to_i
+  end
+  opts.on('-f', '--linkfail-inc F',
+          "incremental % of random link failure (range: (0.0, 0.5] default: 0.1)") do |a|
+    args[:linkfail_inc] = a.to_f
+  end
+  opts.on('--in FILE', 'input graph nodes (required)') {|a| args[:in] = a.to_s.strip }
+  opts.on('--out FILE', 'output stats (must differ from input file)') do |a|
+    args[:out] = a.to_s.strip
+  end
+  opts.on('-?', '--help', 'this help message' ) { warn opts; exit }
+end
+op.parse!
+
+abort op.help if args[:out].to_s.empty? || args[:out] == args[:in]
 
 t0 = Time.now
-
 begin
   json_data = File.read(args[:in].to_s)
   data = JSON.parse(json_data)  # wastefully parse twice

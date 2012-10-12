@@ -1,20 +1,6 @@
+require 'optparse'
 require File.dirname(__FILE__) + "/graph"
 STDOUT.sync = true
-
-def usage
-  abort(<<EOF)
-usage: ruby select_random_peer.rb bias <owner bias> budget <# per-node edges> in <input graph nodes> out <output file>
-
-bias    : probability (range: [0.0, 1.0]) of preferring same-owner peers
-          (default: 0.0 implies uniform selection)
-
-budget  : per-node edge budget (must > 0, default: 3)
-in      : input graph nodes (required)
-out     : output graph nodes + selected edges (must differ from input file)
-EOF
-end
-
-usage if ARGV.empty? || ARGV.include?('--help') || ARGV.include?('-?')
 
 args = {
   :budget => 3,
@@ -23,31 +9,27 @@ args = {
   :bias => 0.0,
 }
 
-i = 0
-while i < ARGV.size
-  arg = ARGV[i]
-  case arg
-  when 'bias'
-    i += 1
-    args[:bias] = ARGV[i].to_f
-  when 'budget'
-    i += 1
-    args[:budget] = ARGV[i].to_i
-  when 'in'
-    i += 1
-    args[:in] = ARGV[i].to_s.strip    
-  when 'out'
-    i += 1
-    args[:out] = ARGV[i].to_s.strip
-  else
-    abort "Invalid arg: #{arg.inspect}" 
-  end
-  i += 1
-end
+op = OptionParser.new do |opts|
+  opts.banner =<<EOF
+usage: ruby select_random_peer.rb -b <# per-node edges> --bias <owner bias> --in <input graph nodes> --out <output file>
 
-usage if (args[:budget] <= 0 ||
-          args[:bias] < 0.0 || args[:bias] > 1.0 ||
-          args[:out].to_s.empty? || args[:out] == args[:in])
+EOF
+  opts.on('-b', '--budget B', 'per-node edge budget (must > 0, default: 3)') {|a| args[:budget] = a.to_i }
+  opts.on('--bias OWNER_BIAS',
+          'probability of preferring same-owner peers (0.0 implies uniformly random selection)') do |a|
+    args[:bias] = a.to_f
+  end
+  opts.on('--in FILE', 'input graph nodes (required)') {|a| args[:in] = a.to_s.strip }
+  opts.on('--out FILE', 'output graph nodes + selected edges (must differ from input file)') do |a|
+    args[:out] = a.to_s.strip
+  end
+  opts.on('-?', '--help', 'this help message' ) { warn opts; exit }
+end
+op.parse!
+
+abort op.help  if (args[:budget] <= 0 ||
+                   args[:bias] < 0.0 || args[:bias] > 1.0 ||
+                   args[:out].to_s.empty? || args[:out] == args[:in])
 begin
   json_data = File.read(args[:in].to_s)
   g = Graph.from_json(json_data, args[:budget], args[:budget])
