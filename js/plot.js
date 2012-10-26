@@ -31,11 +31,12 @@ d3.json(data_source, function(json_data) {
   }
   var matrix_graphs = json_blob['matrix_graphs'];
   matrixdata = matrix_graphs;
+  var normalize_axes = ($.url().param('normalize_axes') === "1");
 
   for (var m in matrix_graphs) {
     var g = matrix_graphs[m];
     console.log("matrix: " + m);
-    matrix_plot("matrix", g.data, g.row_keys, g.col_keys);
+    matrix_plot("matrix", g.data, g.row_keys, g.col_keys, normalize_axes);
   }
 });
 
@@ -43,7 +44,7 @@ d3.json(data_source, function(json_data) {
 function scatter_plot(elem_id, title, data) {
   var height = 400,
       width = 600,
-      padding = 50;
+      padding = 80;
   var svg = d3.select("#" + elem_id).append("svg")
       .attr("width", width + padding)
       .attr("height", height + padding);
@@ -94,7 +95,8 @@ function scatter_plot(elem_id, title, data) {
       .attr("r", 3);
 }
 
-function matrix_plot(elem_id, data, row_keys, col_keys) {
+function matrix_plot(elem_id, data, row_keys, col_keys, normalize_axes) {
+  console.log("normalize axes: " + normalize_axes);
   var size = 400,
       padding = 100,
       rows = row_keys.length,
@@ -105,7 +107,10 @@ function matrix_plot(elem_id, data, row_keys, col_keys) {
   var yScales = {};
   var xAxes = {};
   var yAxes = {};
+  var domains = {};
   var matrix = cross(row_keys, col_keys);
+
+  var domainsByCol = {}; // keyed by col
 
   function cross(a, b) {
     var c = [], n = a.length, m = b.length, i, j;
@@ -115,25 +120,53 @@ function matrix_plot(elem_id, data, row_keys, col_keys) {
     return c;
   }
 
-  // compute scales
+  // compute x and y domains for each cell
   matrix.forEach(function(cell) {
     var data_values = data[cell.rowkey][cell.colkey].values;
     var xcoord = function(d) { return d.x; };
     var ycoord = function(d) { return d.y; };
     var xdomain = [d3.min(data_values, xcoord), d3.max(data_values, xcoord)],
-        ydomain = [d3.min(data_values, ycoord), d3.max(data_values, ycoord)],
-        range = [padding / 2, size - padding / 2];
+        ydomain = [d3.min(data_values, ycoord), d3.max(data_values, ycoord)];
 
-    xScales[[cell.row, cell.col]] = d3.scale.linear()
-    .domain(xdomain)
+    var key = [cell.row, cell.col];
+    domains[key] = {
+      xmin: xdomain[0], xmax: xdomain[1],
+      ymin: ydomain[0], ymax: ydomain[1],
+    };
+
+    if (domainsByCol[cell.col] === undefined) {
+      // initialize w/ deep copy of domain
+      domainsByCol[cell.col] = $.extend(true, {}, domains[key]);
+    } else {
+      var d = domainsByCol[cell.col];
+      for (var p in d) {
+        if (!/min$/.test(p) && !/max$/.test(p))
+          alert("Unexpected key in a domain object! (" + p + ")");
+        var resolve = (/min$/.test(p) ? d3.min : d3.max);
+        d[p] = resolve([d[p], domains[key][p]]);
+      }
+    }
+  });
+
+  // compute axes objects
+  matrix.forEach(function(cell) {
+    var range = [padding / 2, size - padding / 2],
+        key = [cell.row, cell.col];
+
+    var d = (normalize_axes
+             ? domainsByCol[cell.col]
+             : domains[key]);
+
+    xScales[key] = d3.scale.linear()
+    .domain([d.xmin, d.xmax])
     .range(range);
 
-    yScales[[cell.row, cell.col]] = d3.scale.linear()
-    .domain(ydomain)
+    yScales[key] = d3.scale.linear()
+    .domain([d.ymin, d.ymax])
     .range(range.slice().reverse());
 
-    xAxes[[cell.row, cell.col]] = d3.svg.axis().ticks(10);
-    yAxes[[cell.row, cell.col]] = d3.svg.axis().ticks(10);
+    xAxes[key] = d3.svg.axis().ticks(10);
+    yAxes[key] = d3.svg.axis().ticks(10);
   });
 
   var svg = d3.select("#" + elem_id).append("svg")

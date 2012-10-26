@@ -10,8 +10,7 @@ TODO?
 BUGS (Please ping me if you encounter others!)
 ----
 plot: (aka: Axes of Evil)
-- 3rd column y-axis seems to be occluded for some reason
-- normalize matrix axes
+- sometimes the 3rd column y-axis seems to be occluded for some reason; only on the first  couple of rows.
 
 util.rb:
 - binomial distribution centering doesn't really generate a helpful spread of properties.
